@@ -1,117 +1,155 @@
 # UZUZ — Bilim — kuch. Jamoa — g‘alaba.
 
 Bepul, ko‘p tilli (UZ / RU / EN), real-time multiplayer quiz platformasi.
-Login yo‘q, ro‘yxatdan o‘tish yo‘q, to‘lov yo‘q. Saytni oching → taxallus tanlang → o‘ynang.
 
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, React Router, Motion for React, i18next, Socket.IO client, Zod
-- **Backend:** Node.js 20, Express, TypeScript (tsx), MongoDB + Mongoose, Socket.IO, Zod, helmet, express-rate-limit
-- **Shared:** Zod sxemalar, socket event tiplari, scoring va jamoa topish algoritmi (`shared/`)
+Loyiha ikkita **mustaqil** qismga ajratilgan — har biri o‘z `package.json`, `node_modules` va `.env` fayliga ega:
 
 ```
 uzuz/
-  shared/   umumiy kod: sxemalar, tiplar, ochko hisoblash, matching, kodlar
-  server/   Express API + Socket.IO o‘yin dvigateli + MongoDB modellari + seed
-  client/   React ilova (barcha sahifalar, o‘yin ekranlari, admin panel)
-  docs/     API.md — REST va Socket.IO hujjati
+  backend/    NestJS API + Socket.IO gateway + MongoDB (Mongoose) + o‘yin dvigateli + seed
+  frontend/   React 18 + Vite + Tailwind ilova (barcha sahifalar, o‘yin ekranlari, admin panel)
+  API.md      REST va Socket.IO hujjati (endpointlar o‘zgarmagan)
+  render.yaml Render blueprint (faqat backend)
 ```
+
+- **Backend:** Node.js 20+, **NestJS 11** (Express platformasi), TypeScript, MongoDB + Mongoose, Socket.IO (`@nestjs/websockets`), Zod, helmet
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, React Router, Motion, i18next, Socket.IO client, Zod
+
+Umumiy kod (Zod sxemalar, socket tiplari, ochko hisoblash, matching) endi har bir qismning ichida:
+`backend/src/shared/` va `frontend/src/shared/`. Bitta faylni o‘zgartirsangiz, ikkinchisiga ham nusxa ko‘chiring.
 
 ---
 
-## 1. Ishga tushirish (lokal)
+## 1. Lokal ishga tushirish
 
-**Talablar:** Node.js 20+ va npm. MongoDB o‘rnatish **shart emas**: `MONGODB_URI` bo‘sh bo‘lsa, server
-o‘zi ichki MongoDB'ni ishga tushiradi. Ma’lumotlar `server/.mongo-data` papkasida saqlanadi. Birinchi
-ishga tushirishda MongoDB binari yuklab olinadi (~100 MB, bir marta).
+**Talablar:** Node.js 20+ va npm. MongoDB o‘rnatish shart emas — `MONGODB_URI` bo‘sh bo‘lsa, backend
+ichki MongoDB'ni o‘zi ishga tushiradi (ma’lumotlar `backend/.mongo-data` da, birinchi marta ~100 MB yuklab olinadi).
+
+**1-terminal — backend:**
 
 ```bash
+cd backend
 npm install
-cp server/.env.example server/.env      # Windows: copy server\.env.example server\.env
-npm run dev
+cp .env.example .env        # Windows: copy .env.example .env   (.env allaqachon bor bo‘lsa, shart emas)
+npm run dev                 # http://localhost:4000
 ```
 
-- Sayt: http://localhost:5173
-- API: http://localhost:4000 (Vite `/api` va `/socket.io` so‘rovlarini serverga yo‘naltiradi)
+**2-terminal — frontend:**
 
-Bo‘sh bazada server avtomatik ravishda 7 ta kategoriya va 21 ta rasmiy viktorinani (127 ta savol, UZ/RU/EN)
-yuklaydi. O‘ynalganlar soni 0 dan boshlanadi — soxta statistika yo‘q.
+```bash
+cd frontend
+npm install
+npm run dev                 # http://localhost:5173
+```
 
-**Bir nechta qurilmada sinash:** telefon va kompyuter bitta Wi-Fi tarmog‘ida bo‘lsin. Vite `host: true`
-bilan ishlaydi, shuning uchun telefonda `http://<kompyuter-IP>:5173` manzilini oching.
+Saytni http://localhost:5173 da oching. Vite `/api` va `/socket.io` so‘rovlarini `http://localhost:4000` ga
+proxy qiladi, shuning uchun lokal ishlashda `VITE_API_URL` bo‘sh qoladi va cookie'lar muammosiz ishlaydi.
 
-### Admin panel
+Tekshirish: http://localhost:4000/health → `{"ok":true,"db":true,...}`
 
-`/admin` manzili ommaviy menyuda yo‘q. Birinchi adminni yaratishning ikki yo‘li bor:
-
-1. `server/.env` faylida `ADMIN_USERNAME` va `ADMIN_PASSWORD` (kamida 10 belgi) ni to‘ldiring.
-   Admin hali bo‘lmasa, server ishga tushganda uni yaratadi.
-2. Yoki haqiqiy MongoDB bilan: `npm run admin:create -- <login> <parol>`
-
-### Foydali buyruqlar
+### Backend buyruqlari (`backend/` ichida)
 
 | Buyruq | Vazifasi |
 |---|---|
-| `npm run dev` | Server va clientni birga ishga tushiradi |
-| `npm run build` | Clientni `client/dist` ga yig‘adi |
-| `npm start` | Production server (API, WebSocket va build qilingan clientni birga xizmat qiladi) |
-| `npm run seed` | Yetishmayotgan kategoriya va rasmiy viktorinalarni qo‘shadi (`-- --reset` — qayta yaratadi) |
-| `npm test` | Unit testlar (scoring, matching, kodlar, sxemalar, o‘yin dvigateli) va integratsion test |
+| `npm run dev` | NestJS'ni watch rejimida ishga tushiradi (tsx) |
+| `npm run build` | TypeScript → `dist/` |
+| `npm start` | Production: `node dist/main.js` |
+| `npm run seed` | Kategoriya va rasmiy viktorinalarni qo‘shadi (`-- --reset` — qayta yaratadi) |
+| `npm run admin:create -- <login> <parol>` | Admin yaratish / parolini yangilash |
+| `npm test` | Unit (o‘yin dvigateli, scoring, sxemalar) + integratsion test (NestJS + Socket.IO + ichki MongoDB) |
 | `npm run typecheck` | TypeScript tekshiruvi |
+
+### Frontend buyruqlari (`frontend/` ichida)
+
+| Buyruq | Vazifasi |
+|---|---|
+| `npm run dev` | Vite dev server (5173) |
+| `npm run build` | Production build → `dist/` |
+| `npm run preview` | Build’ni lokal ko‘rish |
+| `npm run typecheck` | TypeScript tekshiruvi |
+
+### Admin panel
+
+`/admin` sahifasi. Birinchi adminni yaratish: `backend/.env` da `ADMIN_USERNAME` va `ADMIN_PASSWORD`
+(kamida 10 belgi) ni to‘ldiring yoki `npm run admin:create -- <login> <parol>`.
 
 ---
 
-## 2. Deploy
+## 2. Backend tuzilishi (NestJS)
 
-Eng oddiy va tavsiya etilgan usul — **bitta servis**. Server build qilingan clientni ham beradi, shuning
-uchun cookie va WebSocket bitta domenda ishlaydi.
+```
+backend/src/
+  main.ts                    kirish nuqtasi (listen)
+  app.factory.ts             helmet, CORS, cookie-parser, JSON limit, /api/v1 prefix, Socket.IO adapter
+  app.module.ts              barcha modullar + global guard/filter + SessionMiddleware
+  common/
+    filters/                 AllExceptionsFilter → { error: { code, message } } formati
+    guards/admin.guard.ts    admin cookie tekshiruvi
+    middleware/              mehmon sessiyasi (uzuz_sid cookie)
+    pipes/                   ZodValidationPipe (sxemalar frontend bilan umumiy)
+    rate-limit/              @ActionLimit / @IpLimit + global 400 so‘rov/daqiqa limiti
+    decorators/              @Guest(), @CurrentAdmin()
+  database/                  MongoDB ulanish, seed, birinchi admin (lifecycle hook’lar)
+  realtime/                  GameGateway (Socket.IO), RealtimeService (bildirishnomalar)
+  game/                      o‘yin dvigateli (GameRoom) va GameManager
+  modules/
+    session/ quizzes/ rooms/ teams/ leaderboard/ images/ reports/ admin/ health/
+                             har birida *.controller.ts + *.service.ts + *.module.ts
+  models/                    Mongoose modellari
+  seed/  scripts/  shared/  utils/  config/
+```
+
+Barcha REST endpointlar, javob formatlari, status kodlari, cookie’lar va Socket.IO eventlari
+avvalgi Express versiyasi bilan **bir xil** — frontend kodida API bo‘yicha hech narsa o‘zgarmadi.
+
+---
+
+## 3. Deploy (frontend va backend alohida)
+
+> ⚠️ Vercel serverless WebSocket'ni ushlab turolmaydi — backend doimiy ishlaydigan Node jarayonida bo‘lishi kerak
+> (Render / Railway / Fly.io / VPS).
 
 ### MongoDB Atlas
 
 1. https://cloud.mongodb.com da bepul M0 klaster yarating.
-2. *Database Access* bo‘limida foydalanuvchi qo‘shing, *Network Access* da `0.0.0.0/0` ga ruxsat bering
-   (yoki hostingning IP manzillariga).
-3. Connection string'ni oling: `mongodb+srv://user:pass@cluster.xxxxx.mongodb.net/uzuz`
+2. *Database Access* — foydalanuvchi qo‘shing, *Network Access* — `0.0.0.0/0` (yoki hosting IP’lari).
+3. Connection string: `mongodb+srv://user:pass@cluster.xxxxx.mongodb.net/uzuz`
 
-### Render (repoda `render.yaml` bor)
+### Backend → Render
 
-1. GitHub'ga push qiling → Render → *New → Blueprint* → repozitoriyni tanlang.
-2. Environment o‘zgaruvchilari: `MONGODB_URI`, `CLIENT_URL=https://<sizning-domen>`,
-   ixtiyoriy `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
-3. Build: `npm install --include=dev && npm run build`, Start: `npm start`.
+- Repoda `render.yaml` bor: Render → *New → Blueprint*. Yoki qo‘lda *Web Service*:
+  Root Directory = `backend`, Build = `npm install --include=dev && npm run build`, Start = `npm start`, Health check = `/health`.
+- Environment:
+  `NODE_ENV=production`, `MONGODB_URI=...`, `CLIENT_URL=https://<vercel-domeningiz>`,
+  `COOKIE_SECURE=true`, `COOKIE_SAMESITE=none`, `TRUST_PROXY=1`, ixtiyoriy `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
+- Docker: `cd backend && docker build -t uzuz-backend . && docker run -p 4000:4000 --env-file .env uzuz-backend`
 
-Railway, Fly.io yoki VPS uchun `Dockerfile` tayyor: `docker build -t uzuz . && docker run -p 4000:4000 --env-file server/.env uzuz`.
+### Frontend → Vercel
 
-> ⚠️ **Vercel serverless WebSocket'ni ushlab turolmaydi.** Backend doimiy ishlaydigan Node jarayonida
-> bo‘lishi kerak (Render / Railway / Fly.io / VPS).
+- Root Directory = `frontend`, Framework = Vite, Build = `npm run build`, Output = `dist`.
+- Environment: `VITE_API_URL=https://<render-backend-domeningiz>` (oxirida `/` bo‘lmasin).
+- `frontend/vercel.json` SPA yo‘naltirishlarini sozlaydi.
 
-### Frontend alohida (Vercel) + backend alohida (Render)
+> Brauzerlar boshqa domendagi (third-party) cookie'larni tobora ko‘proq bloklamoqda (ayniqsa Safari).
+> Eng ishonchli variant — backendni frontend domenining subdomeniga qo‘yish: `uzuz.uz` + `api.uzuz.uz`.
 
-1. Vercel: Root Directory = `client`, Build = `npm run build`, Output = `dist`.
-   `client/vercel.json` SPA yo‘naltirishlarini sozlaydi.
-   Environment: `VITE_API_URL=https://api.sizningdomen.uz`
-2. Backend env: `CLIENT_URL=https://sizning-vercel-domen`, `COOKIE_SECURE=true`, `COOKIE_SAMESITE=none`, `TRUST_PROXY=1`.
-3. Muhim: brauzerlar boshqa domendagi (third-party) cookie'larni tobora ko‘proq bloklamoqda. Eng ishonchli
-   variant — API'ni shu domenning subdomeniga qo‘yish (`uzuz.uz` + `api.uzuz.uz`) yoki yuqoridagi bitta
-   servis usuli.
-
-### Environment o‘zgaruvchilari (`server/.env`)
+### Backend environment (`backend/.env`)
 
 | O‘zgaruvchi | Ta’rif |
 |---|---|
 | `PORT` | Server porti (standart 4000) |
 | `NODE_ENV` | `development` / `production` |
-| `MONGODB_URI` | Atlas ulanish satri. Dev'da bo‘sh qoldirsangiz, ichki MongoDB ishlaydi. Production'da majburiy |
+| `MONGODB_URI` | Ulanish satri. Dev’da bo‘sh bo‘lsa ichki MongoDB. Production’da majburiy |
 | `CLIENT_URL` | Ruxsat etilgan frontend manzil(lar)i, vergul bilan (CORS va Socket.IO) |
-| `COOKIE_SECURE` / `COOKIE_SAMESITE` | Cookie sozlamalari (`none` bo‘lsa, `secure` majburiy) |
+| `COOKIE_SECURE` / `COOKIE_SAMESITE` | Cookie sozlamalari (`none` bo‘lsa `secure=true` majburiy) |
 | `TRUST_PROXY` | Proksilar soni (Render/Railway/Fly = 1) |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Admin hali bo‘lmasa, ishga tushishda yaratiladi |
-| `SERVE_CLIENT` | `auto` (standart) — `client/dist` mavjud bo‘lsa, uni ham xizmat qiladi |
 
-Server ishga tushishda env'ni Zod bilan tekshiradi va xato bo‘lsa ishga tushmaydi.
-To‘lov, obuna yoki billing bilan bog‘liq hech qanday o‘zgaruvchi, model yoki endpoint yo‘q.
+Backend ishga tushishda env’ni Zod bilan tekshiradi va xato bo‘lsa ishga tushmaydi.
 
 ---
 
-## 3. Nimalar tayyor
+## 4. Nimalar tayyor
 
 **O‘yin (Arena)**
 - Xona yaratish (klassik / jamoaviy / yakka), 6 belgili xavfsiz kod (0/O/1/I harflarisiz, `crypto.randomInt`), havola va QR kod
@@ -153,12 +191,12 @@ fokus ko‘rsatkichlari, 360px dan boshlab moslashuvchan dizayn, PWA manifest va
 Bular ataylab soxta tugma bilan almashtirilmagan:
 
 - **Admin uchun TOTP 2FA** — yo‘q (login rate-limit va bcrypt bor).
-- **Taxalluslar uchun admin blocklist UI** — yo‘q. Haqoratli taxalluslar shikoyat orqali yashiriladi; so‘kinishlar ro‘yxati `shared/src/profanity.ts` da.
+- **Taxalluslar uchun admin blocklist UI** — yo‘q. Haqoratli taxalluslar shikoyat orqali yashiriladi; so‘kinishlar ro‘yxati `backend/src/shared/profanity.ts` (frontend nusxasi: `frontend/src/shared/`) da.
 - **Ko‘p server instansiyasi:** o‘yin holati bitta jarayon xotirasida. Bir nechta instansiya uchun `@socket.io/redis-adapter` va "sticky session" kerak. Server qayta ishga tushsa, davom etayotgan o‘yinlar yopiladi (yakunlangan natijalar MongoDB'da qoladi).
 - **Rasm saqlash:** rasmlar MongoDB'da saqlanadi (≤512 KB, avval siqiladi). Katta trafik uchun Cloudinary/S3 ga ko‘chirish tavsiya etiladi.
 - **Savol turlari v2:** bir nechta to‘g‘ri javob, javobni yozish, tartiblash — keyingi bosqich.
 - **Playwright end-to-end testlari** repoga kiritilmagan. Unit va socket integratsion testlari bor.
-- Seed: har bir kategoriya bo‘yicha 3 tadan viktorina (jami 21). `server/src/seed/data.ts` ga osongina qo‘shish mumkin.
+- Seed: har bir kategoriya bo‘yicha 3 tadan viktorina (jami 21). `backend/src/seed/data.ts` ga osongina qo‘shish mumkin.
 
 ## 5. Testlar
 
@@ -166,9 +204,9 @@ Bular ataylab soxta tugma bilan almashtirilmagan:
 npm test
 ```
 
-- `shared/test` — ochko formulasi, seriya bonusi, XP/daraja, matching, xona kodlari, slug, sxemalar, so‘kinish filtri
-- `server/test/engine.test.ts` — to‘liq o‘yin, kick/lock/sig‘im, qayta ulanish, lobby tozalash, boshlovchi uzilishi, yakka va jamoaviy rejimlar, javoblarni aralashtirish
-- `server/test/integration.test.ts` — haqiqiy Express + Socket.IO + ichki MongoDB, 3 ta o‘yinchi va boshlovchi
+- `backend/test/shared.test.ts` — ochko formulasi, seriya bonusi, XP/daraja, matching, xona kodlari, slug, sxemalar, so‘kinish filtri
+- `backend/test/engine.test.ts` — to‘liq o‘yin, kick/lock/sig‘im, qayta ulanish, lobby tozalash, boshlovchi uzilishi, yakka va jamoaviy rejimlar, javoblarni aralashtirish
+- `backend/test/integration.test.ts` — haqiqiy NestJS + Socket.IO + ichki MongoDB, 3 ta o‘yinchi va boshlovchi
 
 ## 6. Litsenziya va brending
 
